@@ -3,6 +3,11 @@ import type { Bench, BenchTag, EnvironmentType, FilterState } from '../types/ben
 import { saveToStorage, loadFromStorage, generateId } from '../utils/storage';
 import { exportToGeoJSON, importFromGeoJSON, downloadGeoJSON } from '../utils/geojson';
 import { MOCK_BENCHES } from '../data/mockData';
+import { calculateDistance } from '../lib/utils';
+
+export interface BenchWithDistance extends Bench {
+  distance: number;
+}
 
 interface BenchStore {
   benches: Bench[];
@@ -30,6 +35,7 @@ interface BenchStore {
   setFilterOpen: (open: boolean) => void;
   getFilteredBenches: () => Bench[];
   getCities: () => string[];
+  getNearbyBenches: (benchId: string, limit?: number) => BenchWithDistance[];
   exportData: () => void;
   importData: (geojsonString: string) => void;
   loadFromStorage: () => void;
@@ -152,6 +158,25 @@ export const useBenchStore = create<BenchStore>((set, get) => ({
   getCities: () => {
     const cities = new Set(get().benches.map((bench) => bench.city));
     return Array.from(cities).sort();
+  },
+
+  getNearbyBenches: (benchId, limit = 5) => {
+    const currentBench = get().benches.find((b) => b.id === benchId);
+    if (!currentBench) return [];
+
+    return get()
+      .benches.filter((bench) => bench.id !== benchId)
+      .map((bench) => ({
+        ...bench,
+        distance: calculateDistance(
+          currentBench.lat,
+          currentBench.lng,
+          bench.lat,
+          bench.lng
+        ),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, limit);
   },
 
   exportData: () => {

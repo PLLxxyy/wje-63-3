@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { MapPin, Calendar, Edit2, Trash2, X, Share2 } from 'lucide-react';
+import { MapPin, Calendar, Edit2, Trash2, X, Share2, Navigation } from 'lucide-react';
 import type { Bench } from '../../types/bench';
 import { TAG_ICONS, TAG_COLORS } from '../../types/bench';
 import { useBenchStore } from '../../store/useBenchStore';
+import type { BenchWithDistance } from '../../store/useBenchStore';
 import PhotoCarousel from './PhotoCarousel';
 import Modal from '../Layout/Modal';
 import AddBenchForm from '../Form/AddBenchForm';
+import { formatDistance } from '../../lib/utils';
 
 interface PostcardCardProps {
   bench: Bench;
@@ -13,9 +15,11 @@ interface PostcardCardProps {
 }
 
 export default function PostcardCard({ bench, onClose }: PostcardCardProps) {
-  const { deleteBench } = useBenchStore();
+  const { deleteBench, getNearbyBenches, selectBench } = useBenchStore();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const nearbyBenches: BenchWithDistance[] = getNearbyBenches(bench.id, 5);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -29,6 +33,13 @@ export default function PostcardCard({ bench, onClose }: PostcardCardProps) {
   const handleDelete = () => {
     deleteBench(bench.id);
     onClose();
+  };
+
+  const handleViewOnMap = (nearbyBench: Bench) => {
+    onClose();
+    setTimeout(() => {
+      selectBench(nearbyBench);
+    }, 100);
   };
 
   if (isEditing) {
@@ -185,6 +196,73 @@ export default function PostcardCard({ bench, onClose }: PostcardCardProps) {
                 </div>
               </div>
             </div>
+
+            {nearbyBenches.length > 0 && (
+              <div className="mt-8 pt-6 border-t-2 border-dashed border-amber-200">
+                <h3
+                  className="text-xl font-bold text-stone-800 mb-4 flex items-center gap-2"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  <span>📍</span>
+                  附近推荐
+                </h3>
+                <div className="space-y-3">
+                  {nearbyBenches.map((nearbyBench, index) => (
+                    <div
+                      key={nearbyBench.id}
+                      className="flex items-center gap-4 p-3 bg-white/60 rounded-xl border border-amber-100 hover:bg-white hover:shadow-md transition-all group cursor-pointer"
+                      onClick={() => handleViewOnMap(nearbyBench)}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold flex-shrink-0"
+                        style={{ fontFamily: "'Playfair Display', serif" }}
+                      >
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4
+                          className="font-semibold text-stone-800 truncate"
+                          style={{ fontFamily: "'Lora', serif" }}
+                        >
+                          {nearbyBench.name}
+                        </h4>
+                        <div className="flex items-center gap-2 text-sm text-stone-500">
+                          <MapPin className="w-3 h-3 text-amber-600 flex-shrink-0" />
+                          <span className="truncate" style={{ fontFamily: "'Lora', serif" }}>
+                            {nearbyBench.location}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          {nearbyBench.tags.slice(0, 2).map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full"
+                              style={{ fontFamily: "'Lora', serif" }}
+                            >
+                              {TAG_ICONS[tag]} {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <span
+                          className="text-sm font-semibold text-orange-600"
+                          style={{ fontFamily: "'Lora', serif" }}
+                        >
+                          {formatDistance(nearbyBench.distance)}
+                        </span>
+                        <button
+                          className="p-2 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all group-hover:scale-110"
+                          title="在地图上查看"
+                        >
+                          <Navigation className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
